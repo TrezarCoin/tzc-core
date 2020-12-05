@@ -44,16 +44,16 @@
 #include <arpa/inet.h>
 
 #if BITCOIN_TESTNET
-#define MAGIC_NUMBER 0xf1c8d2fd
+#define MAGIC_NUMBER 0xeff0f2fd
 #else
-#define MAGIC_NUMBER 0xdbb6c0fb
+#define MAGIC_NUMBER 0xfddbefe4
 #endif
 #define HEADER_LENGTH      24
 #define MAX_MSG_LENGTH     0x02000000
 #define MAX_GETDATA_HASHES 50000
 #define ENABLED_SERVICES   0ULL  // we don't provide full blocks to remote nodes
-#define PROTOCOL_VERSION   70015
-#define MIN_PROTO_VERSION  70002 // peers earlier than this protocol version not supported (need v0.9 txFee relay rules)
+#define PROTOCOL_VERSION   70001
+#define MIN_PROTO_VERSION  70001 // peers earlier than this protocol version not supported (need v0.9 txFee relay rules)
 #define LOCAL_HOST         ((UInt128) { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0x00, 0x00, 0x01 })
 #define CONNECT_TIMEOUT    3.0
 #define MESSAGE_TIMEOUT    10.0
@@ -483,10 +483,15 @@ static int _BRPeerAcceptHeadersMessage(BRPeer *peer, const uint8_t *msg, size_t 
 
             for (size_t i = 0; r && i < count; i++) {
                 BRMerkleBlock *block = BRMerkleBlockParse(&msg[off + 81*i], 81);
-                
+/* TrezarCoin skip PoW check
                 if (! BRMerkleBlockIsValid(block, (uint32_t)now)) {
                     peer_log(peer, "invalid block header: %s", u256_hex_encode(block->blockHash));
                     BRMerkleBlockFree(block);
+                    r = 0;
+                }
+*/
+                if (! block) {
+                    peer_log(peer, "malformed headers message with length: %zu", msgLen);
                     r = 0;
                 }
                 else if (ctx->relayedBlock) {
@@ -700,12 +705,14 @@ static int _BRPeerAcceptMerkleblockMessage(BRPeer *peer, const uint8_t *msg, siz
         peer_log(peer, "malformed merkleblock message with length: %zu", msgLen);
         r = 0;
     }
+/* TrezarCoin skip PoW check
     else if (! BRMerkleBlockIsValid(block, (uint32_t)time(NULL))) {
         peer_log(peer, "invalid merkleblock: %s", u256_hex_encode(block->blockHash));
         BRMerkleBlockFree(block);
         block = NULL;
         r = 0;
     }
+*/
     else if (! ctx->sentFilter && ! ctx->sentGetdata) {
         peer_log(peer, "got merkleblock message before loading a filter");
         BRMerkleBlockFree(block);

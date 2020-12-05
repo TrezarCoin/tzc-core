@@ -25,6 +25,7 @@
 #include "BRMerkleBlock.h"
 #include "BRCrypto.h"
 #include "BRAddress.h"
+#include "neoscrypt.h"
 #include <stdlib.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -32,7 +33,7 @@
 #include <assert.h>
 
 #define MAX_PROOF_OF_WORK 0x1e0fffff    // highest value for difficulty target (higher values are less difficult)
-#define TARGET_TIMESPAN   302400        // the targeted timespan between difficulty target adjustments (3.5*24*60*60)
+#define TARGET_TIMESPAN   60        // the targeted timespan between difficulty target adjustments (3.5*24*60*60)
 
 inline static int _ceil_log2(int x)
 {
@@ -122,8 +123,14 @@ BRMerkleBlock *BRMerkleBlockParse(const uint8_t *buf, size_t bufLen)
             if (block->flags) memcpy(block->flags, &buf[off], len);
         }
         
-        BRSHA256_2(&block->blockHash, buf, 80);
-        BRScrypt(&block->powHash, sizeof(block->powHash), buf, 80, buf, 80, 1024, 1, 1);
+        // BLAKE2s block hash
+        unsigned char input[112];
+        neoscrypt_copy(&input[0], buf, 80);
+        neoscrypt_copy(&input[80], &block->merkleRoot, 32);
+        neoscrypt_blake2s(&input[0], 112, &input[58], 32, &block->blockHash, 32);
+
+        // Proof-of-Work
+        neoscrypt(buf, &block->blockHash, 0x00)
     }
     
     return block;

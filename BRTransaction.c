@@ -350,6 +350,8 @@ BRTransaction *BRTransactionParse(const uint8_t *buf, size_t bufLen)
     
     tx->version = (off + sizeof(uint32_t) <= bufLen) ? UInt32GetLE(&buf[off]) : 0;
     off += sizeof(uint32_t);
+    tx->nTime = (unsigned int)&buf[off];
+    off += sizeof(uint32_t);
     tx->inCount = (size_t)BRVarInt(&buf[off], (off <= bufLen ? bufLen - off : 0), &len);
     off += len;
     array_set_count(tx->inputs, tx->inCount);
