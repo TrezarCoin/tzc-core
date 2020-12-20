@@ -395,6 +395,14 @@ BRTransaction *BRTransactionParse(const uint8_t *buf, size_t bufLen)
     tx->lockTime = (off + sizeof(uint32_t) <= bufLen) ? UInt32GetLE(&buf[off]) : 0;
     off += sizeof(uint32_t);
     
+    if (tx->version >= 2) {
+        sLen = (size_t)BRVarInt(&buf[off], (off <= bufLen ? bufLen - off : 0), &len);
+        off += len;
+        array_clear(tx->txComment);
+        array_add_array(tx->txComment, &buf[off], sLen);
+        array_add(tx->txComment, '\0');
+    }
+    
     if (tx->inCount == 0 || off > bufLen) {
         BRTransactionFree(tx);
         tx = NULL;
