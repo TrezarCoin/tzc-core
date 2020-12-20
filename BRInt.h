@@ -158,6 +158,10 @@ inline static UInt256 UInt256Reverse(UInt256 u)
                   ((c) >= 'A' && (c) <= 'F') ? (c) - ('A' - 0x0a) : 0)
 
 // unaligned memory access helpers
+inline static void UInt8Set(void *b1, uint8_t u)
+{
+    *(union _u8 { uint8_t u8[8/8]; } *)b1 = (union _u8) { (u >> 8) & 0xff, u & 0xff };
+}
 
 inline static void UInt16SetBE(void *b2, uint16_t u)
 {
@@ -217,6 +221,11 @@ inline static void UInt256Set(void *b32, UInt256 u)
                         u.u8[8],  u.u8[9],  u.u8[10], u.u8[11], u.u8[12], u.u8[13], u.u8[14], u.u8[15],
                         u.u8[16], u.u8[17], u.u8[18], u.u8[19], u.u8[20], u.u8[21], u.u8[22], u.u8[23],
                         u.u8[24], u.u8[25], u.u8[26], u.u8[27], u.u8[28], u.u8[29], u.u8[30], u.u8[31] };
+}
+
+inline static uint8_t UInt8GetLE(const void *b1)
+{
+    return (((uint8_t)((const uint8_t *)b1)[0]));
 }
 
 inline static uint16_t UInt16GetBE(const void *b2)
