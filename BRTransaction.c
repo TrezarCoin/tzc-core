@@ -26,6 +26,7 @@
 #include "BRKey.h"
 #include "BRAddress.h"
 #include "BRArray.h"
+#include "BRPeer.h"
 #include <stdlib.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -34,6 +35,7 @@
 
 #define TX_VERSION           0x00000001
 #define TX_LOCKTIME          0x00000000
+#define TX_COMMENTSIZE       0x00
 #define SIGHASH_ALL          0x01 // default, sign all of the outputs
 #define SIGHASH_NONE         0x02 // sign none of the outputs, I don't care where the bitcoins go
 #define SIGHASH_SINGLE       0x03 // sign one of the outputs, I don't care where the other outputs go
@@ -262,6 +264,9 @@ static size_t _BRTransactionData(const BRTransaction *tx, uint8_t *data, size_t 
     if (anyoneCanPay && index >= tx->inCount) return 0;
     if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], tx->version); // tx version
     off += sizeof(uint32_t);
+
+    if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], tx->nTime); // tx nTime
+    off += sizeof(uint32_t);
     
     if (! anyoneCanPay) {
         off += BRVarIntSet((data ? &data[off] : NULL), (off <= dataLen ? dataLen - off : 0), tx->inCount);
@@ -317,6 +322,12 @@ static size_t _BRTransactionData(const BRTransaction *tx, uint8_t *data, size_t 
         if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], hashType); // hash type
         off += sizeof(uint32_t);
     }
+
+    if (tx->version >= 2) {
+        if (data && off + sizeof(uint8_t) <= dataLen) UInt8Set(&data[off], tx->txCommentSize);
+        off  += sizeof(uint8_t);
+        off += tx->txCommentSize;
+    }
     
     return (! data || off <= dataLen) ? off : 0;
 }
@@ -328,9 +339,11 @@ BRTransaction *BRTransactionNew(void)
 
     assert(tx != NULL);
     tx->version = TX_VERSION;
+    tx->nTime = (unsigned)time(NULL);
     array_new(tx->inputs, 1);
     array_new(tx->outputs, 2);
     tx->lockTime = TX_LOCKTIME;
+    tx->txCommentSize = TX_COMMENTSIZE;
     tx->blockHeight = TX_UNCONFIRMED;
     return tx;
 }
@@ -350,7 +363,7 @@ BRTransaction *BRTransactionParse(const uint8_t *buf, size_t bufLen)
     
     tx->version = (off + sizeof(uint32_t) <= bufLen) ? UInt32GetLE(&buf[off]) : 0;
     off += sizeof(uint32_t);
-    tx->nTime = (unsigned int)&buf[off];
+    tx->nTime = (off + sizeof(uint32_t) <= bufLen) ? UInt32GetLE(&buf[off]) : 0;
     off += sizeof(uint32_t);
     tx->inCount = (size_t)BRVarInt(&buf[off], (off <= bufLen ? bufLen - off : 0), &len);
     off += len;
@@ -394,13 +407,18 @@ BRTransaction *BRTransactionParse(const uint8_t *buf, size_t bufLen)
     
     tx->lockTime = (off + sizeof(uint32_t) <= bufLen) ? UInt32GetLE(&buf[off]) : 0;
     off += sizeof(uint32_t);
-    
+
     if (tx->version >= 2) {
-        sLen = (size_t)BRVarInt(&buf[off], (off <= bufLen ? bufLen - off : 0), &len);
-        off += len;
-        array_clear(tx->txComment);
-        array_add_array(tx->txComment, &buf[off], sLen);
-        array_add(tx->txComment, '\0');
+        tx->txCommentSize = (off + sizeof(uint8_t) <= bufLen) ? UInt8GetLE(&buf[off]) : 0;
+        off += sizeof(uint8_t);
+
+        unsigned char txComment[tx->txCommentSize];
+        for (int i = 0; i < tx->txCommentSize; i++){
+            txComment[i] = buf[off + i];
+        }
+        txComment[tx->txCommentSize] = '\0';
+        tx->txComment = txComment;
+        off += tx->txCommentSize;
     }
     
     if (tx->inCount == 0 || off > bufLen) {
@@ -479,7 +497,7 @@ size_t BRTransactionSize(const BRTransaction *tx)
     size_t size;
 
     assert(tx != NULL);
-    size = (tx) ? 8 + BRVarIntSize(tx->inCount) + BRVarIntSize(tx->outCount) : 0;
+    size = (tx) ? 12 + BRVarIntSize(tx->inCount) + BRVarIntSize(tx->outCount) : 0;
     
     for (size_t i = 0; tx && i < tx->inCount; i++) {
         input = &tx->inputs[i];
@@ -493,7 +511,11 @@ size_t BRTransactionSize(const BRTransaction *tx)
     for (size_t i = 0; tx && i < tx->outCount; i++) {
         size += sizeof(uint64_t) + BRVarIntSize(tx->outputs[i].scriptLen) + tx->outputs[i].scriptLen;
     }
-    
+
+    if (tx->version >= 2) {
+        size += tx->txCommentSize + 1;
+    }
+
     return size;
 }
 
