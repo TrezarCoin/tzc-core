@@ -262,9 +262,9 @@ static int _BRPeerAcceptAddrMessage(BRPeer *peer, const uint8_t *msg, size_t msg
     size_t off = 0, count = (size_t)BRVarInt(msg, msgLen, &off);
     int r = 1;
     
-    if (off == 0 || off + count*30 > msgLen) {
+    if (off == 0 || off + count*26 > msgLen) {
         peer_log(peer, "malformed addr message, length is %zu, should be %zu for %zu address(es)", msgLen,
-                 BRVarIntSize(count) + 30*count, count);
+                 BRVarIntSize(count) + 26*count, count);
         r = 0;
     }
     else if (count > 1000) {
@@ -278,8 +278,6 @@ static int _BRPeerAcceptAddrMessage(BRPeer *peer, const uint8_t *msg, size_t msg
         peer_log(peer, "got addr with %zu address(es)", count);
 
         for (size_t i = 0; i < count; i++) {
-            p.timestamp = UInt32GetLE(&msg[off]);
-            off += sizeof(uint32_t);
             p.services = UInt64GetLE(&msg[off]);
             off += sizeof(uint64_t);
             p.address = UInt128Get(&msg[off]);
