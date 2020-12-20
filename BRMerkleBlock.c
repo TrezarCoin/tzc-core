@@ -130,7 +130,7 @@ BRMerkleBlock *BRMerkleBlockParse(const uint8_t *buf, size_t bufLen)
         neoscrypt_blake2s(&input[0], 112, &input[58], 32, &block->blockHash, 32);
 
         // Proof-of-Work
-        neoscrypt(buf, &block->blockHash, 0x00)
+        neoscrypt(buf, &block->powHash, 0x00)
     }
     
     return block;
