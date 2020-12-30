@@ -1253,8 +1253,8 @@ static void _peerRelayedBlock(void *info, BRMerkleBlock *block)
     }
     else if (! prev) { // block is an orphan
         peer_log(peer, "relayed orphan block %s, previous %s, last block is %s, height %"PRIu32,
-                 u256_hex_encode(block->blockHash), u256_hex_encode(block->prevBlock),
-                 u256_hex_encode(manager->lastBlock->blockHash), manager->lastBlock->height);
+                 u256_hex_encode_rev(block->blockHash), u256_hex_encode_rev(block->prevBlock),
+                 u256_hex_encode_rev(manager->lastBlock->blockHash), manager->lastBlock->height);
         
         if (block->timestamp + 7*24*60*60 < time(NULL)) { // ignore orphans older than one week ago
             BRMerkleBlockFree(block);
@@ -1335,7 +1335,7 @@ static void _peerRelayedBlock(void *info, BRMerkleBlock *block)
     }
     else if (block->height <= checkpoint_array[CHECKPOINT_COUNT - 1].height) { // fork is older than last checkpoint
         peer_log(peer, "ignoring block on fork older than most recent checkpoint, block #%"PRIu32", hash: %s",
-                 block->height, u256_hex_encode(block->blockHash));
+                 block->height, u256_hex_encode_rev(block->blockHash));
         BRMerkleBlockFree(block);
         block = NULL;
     }

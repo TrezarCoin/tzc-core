@@ -23,6 +23,7 @@
 //  THE SOFTWARE.
 
 #include "BRCrypto.h"
+#include "neoscrypt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -200,6 +201,25 @@ void BRSHA256_2(void *md32, const void *data, size_t len)
     assert(data != NULL || len == 0);
     BRSHA256(t, data, len);
     BRSHA256(md32, t, sizeof(t));
+}
+
+void BLAKE2S(const uint8_t *buf, UInt256* blockHash)
+{
+    // BLAKE2s block hash
+    unsigned char input[112];
+
+    // Copy in the block header
+    neoscrypt_copy(&input[0], buf, 80);
+
+    // Create offset and get merkle root
+    size_t off = sizeof(uint32_t) + sizeof(UInt256); // version + prevBlock
+    UInt256 merkleroot = UInt256Get(&buf[off]);
+
+    // Copy in the merkle root
+    neoscrypt_copy(&input[80], &merkleroot, 32);
+
+    // Hash the data
+    neoscrypt_blake2s(&input[0], 112, &input[58], 32, blockHash, 32);
 }
 
 // bitwise right rotation

@@ -124,10 +124,7 @@ BRMerkleBlock *BRMerkleBlockParse(const uint8_t *buf, size_t bufLen)
         }
         
         // BLAKE2s block hash
-        unsigned char input[112];
-        neoscrypt_copy(&input[0], buf, 80);
-        neoscrypt_copy(&input[80], &block->merkleRoot, 32);
-        neoscrypt_blake2s(&input[0], 112, &input[58], 32, &block->blockHash, 32);
+        BLAKE2S(buf, &block->blockHash);
 
         // Proof-of-Work
         neoscrypt(buf, &block->powHash, 0x00);

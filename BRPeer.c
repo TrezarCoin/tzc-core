@@ -462,9 +462,9 @@ static int _BRPeerAcceptHeadersMessage(BRPeer *peer, const uint8_t *msg, size_t 
             size_t last = 0;
             time_t now = time(NULL);
             UInt256 locators[2];
-            
-            BRSHA256_2(&locators[0], &msg[off + 82*(count - 1)], 80);
-            BRSHA256_2(&locators[1], &msg[off], 80);
+
+            BLAKE2S(&msg[off + 82*(count - 1)], &locators[0]);
+            BLAKE2S(&msg[off], &locators[1]);
 
             if (timestamp > 0 && timestamp + 7*24*60*60 + BLOCK_MAX_TIME_DRIFT >= ctx->earliestKeyTime) {
                 // request blocks for the remainder of the chain
@@ -473,8 +473,8 @@ static int _BRPeerAcceptHeadersMessage(BRPeer *peer, const uint8_t *msg, size_t 
                 while (timestamp > 0 && timestamp + 7*24*60*60 + BLOCK_MAX_TIME_DRIFT < ctx->earliestKeyTime) {
                     timestamp = (++last < count) ? UInt32GetLE(&msg[off + 82*last + 68]) : 0;
                 }
-                
-                BRSHA256_2(&locators[0], &msg[off + 82*(last - 1)], 80);
+
+                BLAKE2S(&msg[off + 82*(last - 1)], &locators[0]);
                 BRPeerSendGetblocks(peer, locators, 2, UINT256_ZERO);
             }
             else BRPeerSendGetheaders(peer, locators, 2, UINT256_ZERO);
@@ -1403,8 +1403,8 @@ void BRPeerSendGetheaders(BRPeer *peer, const UInt256 locators[], size_t locator
 
     if (locatorsCount > 0) {
         peer_log(peer, "calling getheaders with %zu locators: [%s,%s %s]", locatorsCount,
-                 u256_hex_encode(locators[0]), (locatorsCount > 2 ? " ...," : ""),
-                 (locatorsCount > 1 ? u256_hex_encode(locators[locatorsCount - 1]) : ""));
+                 u256_hex_encode_rev(locators[0]), (locatorsCount > 2 ? " ...," : ""),
+                 (locatorsCount > 1 ? u256_hex_encode_rev(locators[locatorsCount - 1]) : ""));
         BRPeerSendMessage(peer, msg, off, MSG_GETHEADERS);
     }
 }

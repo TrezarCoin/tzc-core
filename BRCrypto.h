@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
+#include "BRInt.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,6 +48,9 @@ void BRSHA256_2(void *md32, const void *data, size_t len);
 void BRSHA384(void *md48, const void *data, size_t len);
 
 void BRSHA512(void *md64, const void *data, size_t len);
+
+// Blake2s
+void BLAKE2S(const uint8_t *buf, UInt256* blockHash);
 
 // ripemd-160: http://homes.esat.kuleuven.be/~bosselae/ripemd160.html
 void BRRMD160(void *md20, const void *data, size_t len);
