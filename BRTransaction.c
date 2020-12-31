@@ -33,14 +33,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TX_VERSION           0x00000001
+#define TX_VERSION           0x00000002
 #define TX_LOCKTIME          0x00000000
 #define TX_COMMENTSIZE       0x00
 #define SIGHASH_ALL          0x01 // default, sign all of the outputs
 #define SIGHASH_NONE         0x02 // sign none of the outputs, I don't care where the bitcoins go
 #define SIGHASH_SINGLE       0x03 // sign one of the outputs, I don't care where the other outputs go
 #define SIGHASH_ANYONECANPAY 0x80 // let other people add inputs, I don't care where the rest of the bitcoins come from
-#define SIGHASH_FORKID       0x40 // use BIP143 digest method (for b-cash signatures)
 
 // returns a random number less than upperBound, for non-cryptographic use only
 uint32_t BRRand(uint32_t upperBound)
@@ -259,8 +258,7 @@ static size_t _BRTransactionData(const BRTransaction *tx, uint8_t *data, size_t 
     BRTxInput input;
     int anyoneCanPay = (hashType & SIGHASH_ANYONECANPAY), sigHash = (hashType & 0x1f);
     size_t i, off = 0;
-    
-    if (hashType & SIGHASH_FORKID) return _BRTransactionWitnessData(tx, data, dataLen, index, hashType);
+
     if (anyoneCanPay && index >= tx->inCount) return 0;
     if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], tx->version); // tx version
     off += sizeof(uint32_t);
@@ -317,18 +315,16 @@ static size_t _BRTransactionData(const BRTransaction *tx, uint8_t *data, size_t 
     
     if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], tx->lockTime); // locktime
     off += sizeof(uint32_t);
-    
+
+    if (data && off + sizeof(uint8_t) <= dataLen) UInt8Set(&data[off], tx->txCommentSize);
+    off  += sizeof(uint8_t);
+    off += tx->txCommentSize;
+
     if (index != SIZE_MAX) {
         if (data && off + sizeof(uint32_t) <= dataLen) UInt32SetLE(&data[off], hashType); // hash type
         off += sizeof(uint32_t);
     }
 
-    if (tx->version >= 2) {
-        if (data && off + sizeof(uint8_t) <= dataLen) UInt8Set(&data[off], tx->txCommentSize);
-        off  += sizeof(uint8_t);
-        off += tx->txCommentSize;
-    }
-    
     return (! data || off <= dataLen) ? off : 0;
 }
 
